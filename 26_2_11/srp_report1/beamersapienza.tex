@@ -1,0 +1,559 @@
+\documentclass{beamer}
+\usepackage{amsfonts,amsmath}
+\usetheme{sintef}
+\usepackage{xeCJK}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{hyperref}
+
+% 自定义页码显示
+\setbeamertemplate{footline}[frame number]
+\usefonttheme[onlymath]{serif}
+
+% 你模板里的背景（如不需要可注释）
+\titlebackground*{assets/background_alternative}
+
+% 彩色超链接（沿用你模板）
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+\newcommand{\linkbtn}[2]{\textcolor{cyan}{\hyperlink{#1}{\underline{#2}}}}
+
+% =========================
+% Title info (edit as needed)
+% =========================
+\title{“Thinking with Images” 汇报1}
+\author{尹超}
+\date{\today}
+
+\begin{document}
+\maketitle
+\addtocounter{framenumber}{-1}
+
+% ============================================================
+% 1) Paper 1: VisualToolBench
+% ============================================================
+\section{Paper 1: VisualToolBench}
+
+\begin{frame}{Paper 1：VisualToolBench}
+\begin{itemize}
+  \item \alert{定位}：不是训练新模型，而是提出并评测 \alert{tool-enabled} 的“think-with-images”基准
+  \item \alert{核心贡献}
+  \begin{itemize}
+    \item 任务设计覆盖单轮/多轮、多领域
+    \item \alert{Rubric-based} 指标体系：可解释、可诊断（部分正确也能量化）
+    \item 标准化工具集合（图像处理、搜索、计算等）用于统一评测
+  \end{itemize}
+\end{itemize}
+
+% \begin{block}{对我们意义}
+% 用它做 \alert{上线前压力测试}：验证 agent 的“会不会用工具 + 用得是否有效 + 最终是否可用”。
+% \end{block}
+\end{frame}
+
+\begin{frame}{VisualToolBench：数据与任务结构}
+\begin{columns}
+\begin{column}{0.56\textwidth}
+\begin{block}{数据规模}
+\begin{itemize}
+  \item 1,204 道开放式题（single-turn 603 / multi-turn 601）
+\item 2,893 张图像
+\item 7,777 条 rubrics
+\item 5 大领域均衡：STEM/Medical/Finance/Sports/Generalist
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{block}{任务结构}
+\begin{itemize}
+  \item Single-turn：
+  \begin{itemize}
+    \item Region Switch Q\&A
+    \item Hybrid Tool-use
+  \end{itemize}
+  \item Multi-turn：
+  \begin{itemize}
+    \item Follow-up Test
+    \item Temporal Reasoning
+    \item Progressive Reasoning
+  \end{itemize}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{VisualToolBench：数据}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.85\textwidth]{assets/1.png}
+    \caption{VisualToolBench：各类任务示例（来源：论文 Figure 2）}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{VisualToolBench：评测指标（Rubric 体系）}
+\begin{block}{Rubric 维度（5 类）}
+Visual Understanding / Truthfulness / Instruction Following / Reasoning / Presentation
+\end{block}
+
+\begin{block}{计分方式（关键要点）}
+\begin{itemize}
+  \item 每题包含多条 rubric，含权重 $w \in \{1,2,3,4,5\}$
+  \item Judge 判断每条 rubric 是否满足（0/1），按权重加权归一化得到任务分数
+  \item 可派生 Pass/Fail（关键 rubric 决定）：更接近“能不能用”的产品指标
+\end{itemize}
+\end{block}
+
+\begin{block}{对我们：怎么用}
+\begin{itemize}
+  \item rubric score 用于 \alert{诊断}：错在视觉/真实性/遵循/推理/表达哪一类
+  \item pass/fail 用于 \alert{可用性门槛}：上线前压测更友好
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ---- Figure placeholder + bidirectional links
+\begin{frame}{VisualToolBench：Rubric 评测示意}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.90\textwidth]{assets/2.png}
+  \caption{评测流程}
+\end{figure}
+\vspace{4pt}
+\linkbtn{vtbFigOneExp}{跳转：图表解读页}
+\end{frame}
+
+
+
+% \begin{frame}{VisualToolBench：开源与可跑性（baseline 价值判断）}
+% \begin{block}{判断}
+% \begin{itemize}
+%   \item \alert{优势}：作为“终极靶场”非常强（多工具、多轮、rubric 可解释）
+%   \item \alert{风险}：更像榜单/评测平台思路；是否支持离线一键跑需额外确认
+% \end{itemize}
+% \end{block}
+
+% \begin{block}{建议用法（工程顺序）}
+% 先用 VTBench 做日常回归，再用 DeepEyes 做 RL tool-use baseline，最后用 VTB 压测。
+% \end{block}
+% \end{frame}
+
+% ============================================================
+% 2) Paper 2: V-Thinker
+% ============================================================
+\section{Paper 2: V-Thinker}
+
+\begin{frame}{Paper 2：V-Thinker}
+\begin{itemize}
+  \item \alert{定位}：训练一个通用的 \alert{interactive thinking with images} 模型
+  \item \alert{两大贡献}
+  \begin{itemize}
+    \item Data Evolution Flywheel：合成并校验可执行的交互式数据（逐步改图/标注/推理）
+    \item VTBench：分三层任务的评测集（感知 $\rightarrow$ 交互 $\rightarrow$ 推理）
+  \end{itemize}
+\end{itemize}
+
+% \begin{block}{对我们意义}
+% VTBench 的“分层诊断”非常适合做 \alert{内部回归基准}（定位问题在哪一层）。
+% \end{block}
+\end{frame}
+
+\begin{frame}{V-Thinker：训练数据与 base model}
+\begin{columns}
+\begin{column}{0.52\textwidth}
+\begin{block}{SFT 数据}
+\begin{itemize}
+  \item V-Perception-40K（感知对齐）
+  \item V-Interaction-400K（交互对齐）
+\end{itemize}
+\end{block}
+
+\begin{block}{RL 采样}
+\begin{itemize}
+  \item 从 We-Math2.0 / MMK12 / ThinkLite / V-Interaction-400K 采样 40K
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Base / 对照}
+\begin{itemize}
+  \item 主要对照基线围绕 \alert{Qwen2.5-VL-7B} 展开（结果以 $\Delta$ 展示）
+\end{itemize}
+\end{block}
+
+\begin{block}{开源}
+\begin{itemize}
+  \item GitHub：\hrefcol{https://github.com/We-Math/V-Thinker}{We-Math/V-Thinker}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{The Data Evolution Flywheel framework}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{assets/3.png}
+  \caption{Data Evolution Flywheel 框架}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Performance on VTBench and general reasoning}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{assets/4.png}
+  \caption{Overall performance on VTBench and general reasoning}
+\end{figure}
+\end{frame}
+
+\begin{frame}{VTBench：任务 $\rightarrow$ 输出 $\rightarrow$ 判分}
+\begin{block}{VTBench 三层任务（每层 500，合计 1500 QA）}
+\begin{itemize}
+  \item \alert{Perception}：细粒度定位/坐标
+  \item \alert{Instruction-Guided Interaction}：按指令画线/标注/改图
+  \item \alert{Interactive Reasoning}：交互支撑的推理问答
+\end{itemize}
+\end{block}
+
+\begin{block}{输出与判分口径}
+\begin{itemize}
+  \item Perception：输出 \alert{Python code} 画点/坐标；执行后图像 vs 标注图，\alert{LMM-as-judge}
+  \item Interaction：输出 \alert{Python code} 执行交互；输出图 vs 标注图，\alert{LMM-as-judge}
+  \item Reasoning：输出 \alert{final answer}；\alert{LLM-as-judge} 判正确
+\end{itemize}
+\end{block}
+\end{frame}
+
+
+
+
+
+% \begin{frame}{V-Thinker：可跑性判断（baseline 视角）}
+% \begin{block}{最值得先复用的部分}
+% \begin{itemize}
+%   \item \alert{VTBench 评测框架}（分层诊断 + code-output 判分）更容易快速落地
+% \end{itemize}
+% \end{block}
+
+% \begin{block}{可能更重的部分}
+% \begin{itemize}
+%   \item Data Evolution Flywheel 的完整复现依赖生成器/校验器/工具库细节（工程投入更大）
+% \end{itemize}
+% \end{block}
+% \end{frame}
+
+% ============================================================
+% 3) Paper 3: DeepEyes
+% ============================================================
+\section{Paper 3: DeepEyes}
+
+\begin{frame}{Paper 3：DeepEyes}
+\begin{itemize}
+  \item \alert{定位}：用强化学习直接激励 “thinking with images”
+  \item \alert{核心思路}：用最小工具闭环（zoom-in）把“看不清”变成可学习动作
+  \item \alert{训练算法}：GRPO（group relative policy optimization）
+\end{itemize}
+\begin{block}{意义}
+
+主动感知 (Active Perception)： 模型自己决定“看哪里”，而不是被动接受固定输入。
+
+多步规划 (Multi-step Planning)： 将复杂问题拆解为定位、放大、对比、判断四个阶段。
+
+工具使用 (Tool Use)： 将“放大/裁剪”作为一种外部工具来增强自身的感知上限。
+\end{block}
+\end{frame}
+
+\begin{frame}{DeepEyes：方法概览}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\textwidth]{assets/5.png}
+  \caption{DeepEyes 方法概览}
+\end{figure}
+\end{frame}
+
+\begin{frame}{DeepEyes：训练数据与 Base model}
+\begin{columns}
+\begin{column}{0.55\textwidth}
+\begin{block}{训练数据三块}
+\begin{itemize}
+  \item Fine-grained：V* training set（小目标/细字/局部细节）
+  \item Chart：ArxivQA（图表/曲线等结构化视觉）
+  \item Reason：ThinkLite-VL（推理广度）
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{block}{Base / 对照}
+\begin{itemize}
+  \item 明确围绕 \alert{Qwen2.5-VL-7B} 做数据选择与对照
+\end{itemize}
+\end{block}
+
+\begin{block}{开源}
+\begin{itemize}
+  \item GitHub：\hrefcol{https://github.com/Visual-Agent/DeepEyes}{Visual-Agent/DeepEyes}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{DeepEyes：Reward}
+\begin{block}{三项 reward 组成（工程要点）}
+\begin{itemize}
+  \item Accuracy reward：最终答案正确性
+  \item Formatting reward：输出格式可解析（防止 policy 崩坏）
+  \item \alert{Conditional tool bonus}：仅当答案正确且至少使用一次工具才给 bonus
+\end{itemize}
+\end{block}
+
+\[
+R(\tau) = R_{\text{acc}}(\tau) + R_{\text{format}}(\tau) + \mathbb{I}_{R_{\text{acc}}(\tau)>0} \cdot R_{\text{tool}}(\tau)
+\]
+
+\begin{block}{为什么重要}
+\begin{itemize}
+  \item 防止“乱用工具”刷分；鼓励“\alert{正确且有效} 的工具调用”
+  \item 特别适合做：\alert{工具策略是否真实提升成功率} 的验证闭环
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}{DeepEyes：评测覆盖面（用于综合回归）}
+\begin{block}{高分辨/细粒度}
+V*Bench、HR-Bench（4K/8K）——验证 zoom-in 是否提升细节感知
+\end{block}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{assets/6.png}
+  \caption{高分辨率基准测试结果}
+\end{figure}
+\end{frame}
+
+\begin{frame}{DeepEyes：评测覆盖面（用于综合回归）}
+
+\begin{block}{Grounding / Hallucination}
+refCOCO/refCOCO+/refCOCOg、ReasonSeg、POPE ——验证定位与幻觉抑制
+\end{block}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{assets/7.png}
+  \caption{在定位（Grounding）与幻觉（Hallucination）基准测试上的结果}
+\end{figure}
+
+\end{frame}
+\begin{frame}{DeepEyes：评测覆盖面（用于综合回归）}
+\begin{block}{推理任务}
+MathVista/MathVision/MathVerse/We-Math 等 ——验证泛化到推理 QA
+\end{block}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{assets/8.png}
+  \caption{多模态推理基准测试结果}
+\end{figure}
+\end{frame}
+
+
+
+
+
+% ============================================================
+% 4) Paper 4: SAM-R1
+% ============================================================
+\section{Paper 4: SAM-R1}
+
+\begin{frame}{Paper 4：SAM-R1}
+\begin{itemize}
+  \item \alert{定位}：多模态分割 / 指代分割（referring segmentation）的 RL 对齐
+  \item \alert{核心范式}：MLLM 先输出 bbox/point 等中间表示，再交给 \alert{SAM2-Large} 生成 mask
+  \item \alert{关键贡献}：用 SAM 的 mask 质量构造 reward，把分割质量显式反馈给 MLLM
+\end{itemize}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\textwidth]{assets/9.png}
+  \caption{SAM-R1 方法概览}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{SAM-R1：方法概览}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{assets/10.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{SAM-R1：训练数据 / Base model / 输出格式}
+\begin{columns}
+\begin{column}{0.55\textwidth}
+\begin{block}{训练数据}
+\begin{itemize}
+  \item RefCOCOg train 随机采样 3,000
+  \item In-domain：RefCOCOg test
+  \item OOD：RefCOCO testA、RefCOCO+ testA
+  \item 额外：ReasonSeg（zero-shot）
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{block}{Base}
+\begin{itemize}
+  \item MLLM：\alert{Qwen2.5-VL-7B}
+  \item Segmenter：\alert{SAM2-Large}
+\end{itemize}
+\end{block}
+
+\begin{block}{输出格式（必须对齐）}
+\begin{itemize}
+  \item bbox + reference point + textual flag（结构化）
+  \item 再由 SAM 产 mask
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{SAM-R1：指标}
+\begin{block}{评测指标}
+\begin{itemize}
+  \item \alert{gIoU}：per-image IoU 平均
+  \item \alert{cIoU}：累计 intersection / 累计 union
+\end{itemize}
+\end{block}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.80\textwidth]{assets/11.png}
+  \caption{在 RefCOCOg/RefCOCO/RefCOCO+ 上的评测结果}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}{SAM-R1：指标}
+
+\begin{block}{训练 reward（关键）}
+\begin{itemize}
+  \item 将（bbox+point）交给 SAM 得到 mask，与 GT mask 算 IoU
+  \item 按 IoU 分段给 reward（例如 $>0.8, 0.7\sim0.8, 0.5\sim0.7, \text{else}$）
+\end{itemize}
+\end{block}
+
+\begin{block}{为什么重要}
+把“分割质量”变成可学习信号，避免只在语言空间里对齐。
+\end{block}
+\end{frame}
+
+
+
+% ============================================================
+% 5) Cross-paper comparison
+% ============================================================
+\section{Cross-paper Comparison}
+
+% \begin{frame}{横向对比：四篇论文的“任务范式”定位}
+% \begin{columns}
+% \begin{column}{0.5\textwidth}
+% \begin{block}{评测靶场（压测）}
+% \begin{itemize}
+%   \item VisualToolBench：多工具、多轮、rubric 诊断强
+% \end{itemize}
+% \end{block}
+
+% \begin{block}{交互式推理（code 可执行）}
+% \begin{itemize}
+%   \item V-Thinker + VTBench：Perception/Interaction/Reasoning 分层评测
+% \end{itemize}
+% \end{block}
+% \end{column}
+% \begin{column}{0.5\textwidth}
+% \begin{block}{最小 RL baseline（单工具）}
+% \begin{itemize}
+%   \item DeepEyes：zoom-in + GRPO + conditional tool bonus
+% \end{itemize}
+% \end{block}
+
+% \begin{block}{分割 RL（IoU 可度量）}
+% \begin{itemize}
+%   \item SAM-R1：bbox/point $\rightarrow$ SAM mask，gIoU/cIoU + OOD
+% \end{itemize}
+% \end{block}
+% \end{column}
+% \end{columns}
+% \end{frame}
+
+\begin{frame}{对齐表：数据集/Benchmark $\rightarrow$ 任务 $\rightarrow$ 输出 $\rightarrow$ 判分}
+\scriptsize % 改为 tiny 以确保不溢出
+\setlength{\tabcolsep}{1.5pt} % 减小列间距
+\renewcommand{\arraystretch}{1.2} % 稍微增加行高
+\begin{table}
+\centering
+\begin{tabular}{>{\RaggedRight\arraybackslash}p{0.12\textwidth}
+                >{\RaggedRight\arraybackslash}p{0.20\textwidth}
+                >{\RaggedRight\arraybackslash}p{0.36\textwidth}
+                >{\RaggedRight\arraybackslash}p{0.28\textwidth}}
+\toprule
+\textbf{论文} & \textbf{数据集/Benchmark} & \textbf{任务类型 \& 输出格式} & \textbf{判分方式/指标} \\
+\midrule
+VisualToolBench & VISUALTOOLBENCH &
+Tool-enabled 单/多轮；输出：最终自然语言 answer（可含工具轨迹） &
+Rubric（0/1）+ weight 加权；LLM-as-judge 逐条 rubric 判定 \\
+\midrule
+V-Thinker & VTBench（1500 QA，3 类任务） &
+Perception：输出 Python code（画点/坐标）；
+Interaction：输出 Python code（执行交互）；
+Reasoning：输出 final answer &
+Perception/Interaction：执行图 vs 标注图，LMM-as-judge；
+Reasoning：LLM-as-judge \\
+\midrule
+DeepEyes & V* / HR-Bench / refCOCO* / POPE / ReasonSeg / Math* &
+交互式推理（zoom-in）；输出：\texttt{bbox\_2d} 工具调用（可多次）+ 最终 answer &
+多按各 benchmark 官方协议；覆盖高分辨、grounding、hallucination 等 \\
+\midrule
+SAM-R1 & RefCOCOg / RefCOCO / RefCOCO+ / ReasonSeg &
+指代分割；输出：bbox + point + flag（结构化）并交给 SAM 产 mask &
+评测：gIoU/cIoU；
+训练 reward：IoU 分段（SAM mask vs GT） \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+% \begin{frame}{Baseline 建议：最小可行路线（不堆叠，能落地）}
+% \begin{block}{Step 1：统一接口（Qwen2.5-VL-7B + 工具）}
+% \begin{itemize}
+%   \item 工具先从 \alert{zoom-in/crop} 做起（最小闭环）
+%   \item 记录每步工具输入/输出/耗时（为 rubric/错误归因做准备）
+% \end{itemize}
+% \end{block}
+
+% \begin{block}{Step 2：分层评测回归（VTBench）}
+% \begin{itemize}
+%   \item 先定位是 Perception、Interaction 还是 Reasoning 层的问题
+% \end{itemize}
+% \end{block}
+
+% \begin{block}{Step 3：训练对齐（DeepEyes 风格 RL）}
+% \begin{itemize}
+%   \item 用 conditional tool bonus 确保工具使用“有效且正确”
+% \end{itemize}
+% \end{block}
+
+% \begin{block}{Step 4：上线前压力测试（VisualToolBench）}
+% \begin{itemize}
+%   \item 用 rubric score + pass/fail 做最终可用性门槛
+% \end{itemize}
+% \end{block}
+% \end{frame}
+
+% \begin{frame}{Q\&A}
+% \centering
+% {\Large Q\&A}\\
+% \vspace{10pt}
+% \small（需要我也可以再给一页“风险清单”：judge 偏差、tool misuse、offline 可跑性等）
+% \end{frame}
+
+\end{document}
