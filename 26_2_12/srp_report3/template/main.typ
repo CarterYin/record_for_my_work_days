@@ -288,5 +288,148 @@
 //   数据示例
 // ]
 
+// Title slide for Scoring Mechanism
+#title-slide[
+  打分机制详解 (Scoring Mechanism)
+]
+
+// Overview
+#slide(title: "总体策略 (Overall Strategy)")[
+  采用 #stress[“规则匹配优先 + LLM 裁判兜底”] 的混合评价策略，兼顾效率与语义灵活性。
+
+  #framed(title: "打分流程")[
+    对每个测试样本按序执行：
+    1.  **预处理**: 清理模型输出（如去除 `\boxed{}`）。
+    2.  **规则匹配 (Rule-Based)**: 字符串精确匹配。命中则直接得分，#stress[不调用 LLM]。
+    3.  **LLM 裁判 (LLM-as-a-Judge)**: 若规则未命中，构造 Prompt 发送给裁判模型（Qwen-2.5-72B），判断语义一致性。
+  ]
+]
+
+// Rule-Based Check
+#slide(title: "规则匹配 (Rule-Based Check)")[
+  优先检查模型输出是否符合标准格式，节省 API 成本。
+
+  - **单字符匹配**: 输出单个字符 (如 "A") 且不冲突。
+  - **带点选项匹配**: 输出包含点 (如 "A.") 且包含正确选项。
+  - **包含匹配**: 模型输出完整包含标准答案字符串 (e.g., "A. The towel is blue")。
+]
+
+// LLM Judge
+#slide(title: "LLM 裁判 (LLM-as-a-Judge)")[
+  当输出为自然语言或格式不规范时触发。使用 Few-Shot Prompt 指导裁判。
+
+  - **Prompt 构造**:
+    - *指令*: 判断 `[Model_answer]` 与 `[Standard Answer]` 语义是否一致。
+    - *示例 (ICE)*: 内置 7 个示例 (肯定/否定/颜色/方位等)，明确判定标准。
+  - **判定逻辑**:
+    - 若裁判返回 `Judgement: 1` -> **1.0 分**。
+    - 否则 -> **0.0 分**。
+]
+
+// Comparison V* vs HRBench
+#slide(title: "评测集差异 (V* vs HRBench)")[
+  #set text(size: 18pt)
+  #table(
+    columns: (1fr, 1.5fr, 1.5fr),
+    inset: 12pt,
+    stroke: 1pt + gray,
+    align: left + horizon,
+    [*特性*], [*V\* Benchmark*], [*HRBench*],
+    [**标准答案**], [强制设为 'A' + 文本], [读取真实选项字母],
+    [**规则匹配**], [强依赖 'A' 字母], [动态比较选项字母],
+    [**Prompt**], ["A. [Answer]" 格式], [原始带选项文本]
+  )
+]
+
+// Scenarios
+#slide(title: "示例场景 (Scenarios)")[
+  假设标准答案: *`"A. The apple is red"`*
+
+  #text(size: 19pt)[
+  1.  **输出 "A"**: \
+      -> 规则匹配 (准确) -> #stress[1.0 分]
+  2.  **输出 "A. The apple is red"**: \
+      -> 规则匹配 (完全包含) -> #stress[1.0 分]
+  3.  **输出 "The apple is clearly red"**: \
+      -> 规则失败 -> LLM 判定语义一致 -> #stress[1.0 分]
+  4.  **输出 "It is green"**: \
+      -> 规则失败 -> LLM 判定不一致 -> #stress[0.0 分]
+  ]
+]
+
+// Title slide for Reward Mechanism
+#title-slide[
+  奖励机制详解 (Reward Mechanism)
+]
+
+// Overview
+#slide(title: "奖励函数组成 (Reward Components)")[
+  基于 `verl/utils/reward_score/vl_agent.py`，奖励函数由三部分组成：
+
+  1.  **Accuracy Reward**: 答案是否正确。
+  2.  **Formatting Reward**: 格式标签是否规范。
+  3.  **Conditional Tool Bonus**: #stress[关键] - 激励“用工具做对题”。
+
+  #framed(title: "设计哲学")[
+    通过混合奖励信号，引导模型不仅仅是“猜对”答案，而是建立正确的“视觉思考”路径。
+  ]
+]
+
+// Accuracy & Format
+#slide(title: "准确性与格式奖励")[
+  #cols(columns: (1fr, 1fr), gutter: 1em)[
+    **1. Accuracy Reward**
+    - 依赖 LLM Judge 判定。
+    - **Code**:
+      ```python
+      if '1' in response:
+          acc_reward = 1.0
+      elif '0' in response:
+          acc_reward = 0.0
+      ```
+  ][
+    **2. Formatting Reward**
+    - 检查 XML 标签闭合 (`<think>`, `<answer>`, `<vision>`)。
+    - **Code**:
+      ```python
+      # 标签不成对 -> -1.0 惩罚
+      if count_think_1 != count_think_2:
+          is_format_error = True
+      format_reward = -1.0 if error else 0.0
+      ```
+  ]
+]
+
+// Conditional Tool Bonus
+#slide(title: "条件工具奖励 (Conditional Tool Bonus)")[
+  这是激励 #stress["Thinking with Images"] 的核心机制。
+
+  #framed(title: "触发条件")[
+    只有当 **模型使用了工具** (`vision > 0`) **且** **答案正确** (`acc > 0.5`) 时，才能获得奖励。
+  ]
+
+  #v(1em)
+  ```python
+  # 只有 "用了工具" 且 "答对了"，才能拿到这 1.0 的 tool_reward
+  tool_reward = 1.0 if count_vision_1 > 0 and acc_reward > 0.5 else 0.0
+  ```
+  #text(size: 16pt, fill: gray)[防止模型为了拿奖励而乱用工具（无效调用）或只用工具不答题。]
+]
+
+// Final Formula
+#slide(title: "最终奖励公式 (Final Formula)")[
+  加权求和得出最终 `score`：
+
+  #text(size: 20pt, weight: "bold")[
+  $ R_"total" = 0.8 times R_"acc" + 0.2 times R_"fmt" + 1.2 times R_"tool" $
+  ]
+
+  #v(1em)
+  - **权重分析**:
+    - $R_"tool"$ (1.2) > $R_"acc"$ (0.8)。
+    - **强力引导**：模型“用工具做对”比“纯盲猜做对”收益更高。
+    - $R_"fmt"$ (0.2) 配合 -1.0 的惩罚项，确保基本格式合规。
+]
+
 
 
